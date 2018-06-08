@@ -1,4 +1,4 @@
-#ifndef _KMEANS_GPU_intH
+#ifndef _KMEANS_GPU_H
 #define _KMEANS_GPU_H
 #include <stdio.h>
 #include <assert.h>
@@ -12,41 +12,42 @@
         name[i] = name[i-1] + yDim;                         \
 } while (0)
 
-#ifdef __CUDACC__
-inline void CHECK(cudaError_t err) {
-    if(err != cudaSuccess) {
-        printf("[FATAL] line(%d) cudaErr %d: %s\n", __LINE__, err, cudaGetErrorString(cu_err));
+inline void CHECK(cudaError_t cu_err) {
+    if(cu_err != cudaSuccess) {
+        printf("[FATAL] line(%d) cudaErr %d: %s\n", __LINE__, cu_err, cudaGetErrorString(cu_err));
 		exit(EXIT_FAILURE);
     }
 }
-#endif
 
 struct kmeans_model 
 {
-    float** data;
-    float** h_Data;
-    float** d_Data;
+    float** data;				// [numSamples][dim]
+    float** h_Data;				// [dim][numSamples]
+    float* d_Data;				// [dim][numSamples]
 
-    float **centroids;
-    float **h_Centroids;
-    float **d_Centroids;
+    float **centroids;			// [numClusters][dim]
+    float **h_Centroids;		// [dim][numClusters]
+    float *d_Centroids;			// [dim[numClusters]
 
-    int ***newClusters;
+    float **newClusters;		// [dim][numClusters]
+	int *newClusterCounts;		// [numSamples]
 
-    int *d_currCluster;
-    int *d_Intermediate;
+	int *currCluster;			// [numSamples]
+    int *d_currCluster;			// [numSamples]
+    int *d_Intermediate;		// [numReductionThreads]
 
     int dim;
     int numSamples;
     float threshold;
-    int **currCluster;
     int loop_iterations;
 
     int* clusterCounts;
+	int numCentroids;
 };
 
-float** cuda_kmeans(float**, int, int, int, float, int*, int*);
+void cu_kmeans(kmeans_model*, int, int, int, float, int*, int*);
 float** read_file(char*, int, int*, int*);
-extern int _debug;
+int save_model(kmeans_model*, char*, int);
+
 
 #endif // _KMEANS_GPU_H
