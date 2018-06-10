@@ -17,7 +17,7 @@ cuda_add_executable( cu_KMeans
 ${HEADERS}
 kmeans_main.cu
 kmeans.cu
-OPTIONS --cudart=shared  -DUSE_SHARED_MEM -lineinfo -arch sm_52 -use_fast_math -maxrregcount 104
+OPTIONS --cudart=shared  -lineinfo -arch sm_52 -use_fast_math -maxrregcount 104
 DEBUG -Xptxas -v -g -G 
 )
 
