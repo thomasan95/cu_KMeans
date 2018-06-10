@@ -43,7 +43,15 @@ struct kmeans_model
 
     int* clusterCounts;
 	int numCentroids;
+
+    data_point* data;
 };
+
+struct data_point{
+    char label;
+    char* pixel_values;
+    //double atof(const char *str) to convert to double later
+}
 
 void cu_kmeans(kmeans_model*, int, int, int, float, int*, int*);
 float** read_file(char*, int, int*, int*);
