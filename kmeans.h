@@ -53,9 +53,49 @@ struct data_point{
     //double atof(const char *str) to convert to double later
 }
 
-void cu_kmeans(kmeans_model*, int, int, int, float, int*, int*);
-float** read_file(char*, int, int*, int*);
-int save_model(kmeans_model*, char*, int);
+km_float** cu_kmeans(km_float**, int*, int, int, int, km_float, int*, int*);
+km_float* thrust_kmeans(int, int, int, km_float*, int*, km_float, int*);
+void transposeHost(km_float*, km_float*, int, int);
+
+
+template <typename T> T* malloc_aligned_float(long long size) {
+    long long const kALIGNByte = 32;
+    long long const kALIGN = kALIGNByte / sizeof(T);
+
+    void *ptr;
+#ifdef _WIN32
+    ptr = _aligned_malloc(size * sizeof(T), kALIGNByte);
+    if (ptr == nullptr) {
+        printf("Bad Alloc!");
+        exit(0);
+    }
+#else
+    printf("Using Posix Memalign\n");
+    int status = posix_memalign(&ptr, kALIGNByte, size * sizeof(T));
+    if (status != 0) {
+        printf("Bad Alloc!");
+        exit(0);
+    }
+#endif
+    return (T*)ptr;
+}
+    
+template <typename T> void free_aligned_float(T* ptr) {
+#ifdef _WIN32
+    _aligned_free(ptr);
+#else
+    free(ptr);
+#endif
+}
+
+#define malloc2Dalign(name, xDim, yDim, type) do {               \
+    name = (type **)malloc_aligned_float(xDim * sizeof(type *));          \
+    assert(name != NULL);                                   \
+    name[0] = (type *)malloc_aligned_float(xDim * yDim * sizeof(type));   \
+    assert(name[0] != NULL);                                \
+    for (size_t i = 1; i < xDim; i++)                       \
+        name[i] = name[i-1] + yDim;                         \
+} while (0)
 
 
 #endif // _KMEANS_GPU_H
