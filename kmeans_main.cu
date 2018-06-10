@@ -1,27 +1,34 @@
-#include <cstring>
-#include <cstdlib>
-#include <fstream>
-#include <iostream>
+// #include <cstring>
+// #include <cstdlib>
+// #include <fstream>
+// #include <iostream>
+#include <stdlib.h>
+#include <stdio.h> 
+
 #include <string>
 #include <iomanip>
-#include <stdexcept>
+// #include <stdexcept>
 #include <vector>
 #include <numeric>
 #include <random>
-
 #include <iostream>
+#include <cstdio>
+
+//#include <cuda_runtime.h>
+
 #include "kmeans.h"
-#include "file_utils.h"
+//#include "file_utils.h"
 
 
 int main(int argc, char **argv) {
-	// Data Set for Random Testing
 	parameters params;
 	int n = params.numSamples; // 60k samples
 	int d = params.dim; // 784 dimension
 	int k = params.classes;  // 10 labels and 10 centroids
-	km_float threshold = params.threshold;
+	double threshold = params.threshold;
 
+
+	// Data Set for Random Testing
 	km_float** h_data = nullptr;
 	//km_float** h_data_tmp = nullptr;
 	int* h_labels = nullptr;
@@ -51,21 +58,21 @@ int main(int argc, char **argv) {
 	// Generate Random Data of varying mean, with stddev 2.0
 	printf("[INFO]: Generating Random Values\n");
 	std::default_random_engine generator;
-	double *means = new double(k);
-	long long count = 0;
+	km_float *means = new km_float(k);
+	int count = 0;
 	for (int i = 0; i < k; i++) {
-		means[i] = (double)count;
+		means[i] = (km_float)count;
 		count += 5;
 	}
 	int pointsPerLabel = n / k;
-	double mean = 0.0;
+	km_float mean = 0.0;
 
 	count = 0;
 	for (int i = 0; i < k; i++) {
 		mean = means[i];
-		std::normal_distribution<double> distribution(mean, 2.0);
+		std::normal_distribution<km_float> distribution(mean, 2.0);
 		for (int j = 0; j < pointsPerLabel * d; j++) {
-			double num = distribution(generator);
+			km_float num = distribution(generator);
 			h_data[i][j] = num;
 			count++;
 		}
@@ -92,19 +99,15 @@ int main(int argc, char **argv) {
 							threshold,
 							currCluster,
 							&loop_iterations);
-	/*
-	h_centroids = thrust_kmeans(n,
-								d,
-								k,
-								h_data,
-								h_labels,
-								threshold,
-								&loop_iterations);
 
-	*/
+	printf("Done KMEANS\n");
+	free(h_data[0]);
 	free(h_data);
 	free(h_labels);
-
+	free(h_centroids[0]);
+	free(h_centroids);
+	free(currCluster);
+	return 0;
 	/*
 	thrust::host_vector<km_float> h_data(n * d);
 	thrust::host_vector<int> h_labels(n);
@@ -112,21 +115,21 @@ int main(int argc, char **argv) {
 
 	printf("Generating Random Values\n");
 	std::default_random_engine generator;
-	double *means = new double(k);
+	km_float *means = new km_float(k);
 	long long count = 0;
 	for (int i = 0; i < k; i++) {
-		means[i] = (double)count;
+		means[i] = (km_float)count;
 		count += 5;
 	}
 	int pointsPerLabel = n / k;
-	double mean = 0.0;
+	km_float mean = 0.0;
 
 	count = 0;
 	for (int i = 0; i < k; i++) {
 		mean = means[i];
-		std::normal_distribution<double> distribution(mean, 2.0);
+		std::normal_distribution<km_float> distribution(mean, 2.0);
 		for (int j = 0; j < pointsPerLabel * d; j++) {
-			double num = distribution(generator);
+			km_float num = distribution(generator);
 			h_data[i * pointsPerLabel * d + j] = num;
 			count++;
 		}
@@ -142,46 +145,13 @@ int main(int argc, char **argv) {
 	for (int i = 0; i < 10; i++) {
 		printf("%d: Labels: %d\n", h_labels[i]);
 	}
+
+	h_centroids = thrust_kmeans(n,
+	d,
+	k,
+	h_data,
+	h_labels,
+	threshold,
+	&loop_iterations);
 	*/
 }
-/*
-int main(int argc, char **argv) {
-
-    int _debug = 0;
-    int isBinary;
-
-    int numCentroids;
-    char *path;
-    float **data;
-    float threshold;
-    int loop_iterations;
-
-    _debug = 0;
-    threshold = 0.001;
-    numCentroids = 0;
-    isBinary = 0;
-
-//    model->data = file_read(path, isBinary, &model->numSamples, &model->dim);
-    if(model->data == NULL) {
-        exit(1);
-    }
-    model->currCluster = (int*)malloc(model->numSamples * sizeof(int));
-    assert(model->currCluster != NULL);
-
-	model->numCentroids = numCentroids;
-    cu_kmeans(model, model->dim, model->numSamples, model->numCentroids, threshold, model->currCluster, &loop_iterations);
-
-    free(model->data[0]);
-    free(model->data);
-
-    /////////////////////////////
-    // TO DO ////////////////////
-    /////////////////////////////
-    // save_model();
-    // free(model->intermediates);
-    free(model->centroids[0]);
-    free(model->centroids);
-    return 0;
-
-}
-*/
