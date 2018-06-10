@@ -33,17 +33,12 @@ int main(int argc, char **argv) {
 	//km_float** h_data_tmp = nullptr;
 	int* h_labels = nullptr;
 
-	km_float **h_centroids;
-	malloc2D(h_centroids, k, d, km_float);
-
 	int* currCluster;
 	currCluster = (int *)malloc(sizeof(int) * n);
 
 	// Allocate Memory
 	printf("[INFO]: Allocating Memory\n");
 	try {
-		// h_data = (km_float *)malloc((long long)n * d * sizeof(km_float));
-		// h_data_tmp = (km_float *)malloc((long long)n * d * sizeof(km_float));
 		malloc2D(h_data, n, d, km_float);
 		h_labels = (int *)malloc((long long)n * sizeof(int));
 	}
@@ -52,7 +47,6 @@ int main(int argc, char **argv) {
 		free(h_data[0]);
 		free(h_data);
 		free(h_labels);
-		// free(h_data_tmp);
 	}
 
 	// Generate Random Data of varying mean, with stddev 2.0
@@ -67,14 +61,15 @@ int main(int argc, char **argv) {
 	int pointsPerLabel = n / k;
 	km_float mean = 0.0;
 
-	count = 0;
 	for (int i = 0; i < k; i++) {
 		mean = means[i];
 		std::normal_distribution<km_float> distribution(mean, 2.0);
-		for (int j = 0; j < pointsPerLabel * d; j++) {
-			km_float num = distribution(generator);
-			h_data[i][j] = num;
-			count++;
+		for (int j = 0; j < pointsPerLabel; j++) {
+			for (int z = 0; z < d; z++) {
+				km_float num = distribution(generator);
+				h_data[i * pointsPerLabel + j][z] = num;
+			}
+
 		}
 	}
 	for (int i = 0; i < k; i++) {
@@ -82,17 +77,14 @@ int main(int argc, char **argv) {
 			h_labels[i * pointsPerLabel + j] = i;
 		}
 	}
-	printf("[INFO]: Done\n");
 
-	//transposeHost(h_data, h_data_tmp, n, d);
-	//free(h_data_tmp);
 
 	int loop_iterations = 0;
 	printf("[INFO]: Calling KMeans\n");
 
+	km_float **h_centroids;
 
 	h_centroids = cu_kmeans(h_data,
-							h_labels,
 							d,
 							n,
 							k,
@@ -100,12 +92,14 @@ int main(int argc, char **argv) {
 							currCluster,
 							&loop_iterations);
 
-	printf("Done KMEANS\n");
+	for (int i = 0; i < k ; i ++) {
+		printf("H_Centroids[%d]: %f, %f\n", i, h_centroids[i][0], h_centroids[i][1]);
+	}
 	free(h_data[0]);
 	free(h_data);
 	free(h_labels);
-	free(h_centroids[0]);
-	free(h_centroids);
+	//free(h_centroids[0]);
+	//free(h_centroids);
 	free(currCluster);
 	return 0;
 	/*
