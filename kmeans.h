@@ -1,21 +1,12 @@
-#ifndef _KMEANS_GPU_H
-#define _KMEANS_GPU_H
-#include <stdlib.h>
-#include <stdio.h>
+#ifndef _GPU_KMEANS_H
+#define _GPU_KMEANS_H
+
 #include <assert.h>
-#include <stdexcept>
-#include <cctype>
-#include <cstring>
-#include <string>
-#include <fstream>
-#include <iostream>
 
-#include <cuda_runtime.h>
+typedef float km_float; 
 
 
-typedef float km_float;
-
-
+// Allocate a 2D array with pointers set spaced by dimension of data
 #define malloc2D(name, xDim, yDim, type) do {               \
     name = (type **)malloc(xDim * sizeof(type *));          \
     assert(name != NULL);                                   \
@@ -25,20 +16,24 @@ typedef float km_float;
         name[i] = name[i-1] + yDim;                         \
 } while (0)
 
+inline void CHECK(cudaError_t e) {
+    if (e != cudaSuccess) {
+
+        printf("CUDA Error %d: %s\n", e, cudaGetErrorString(e));
+    }
+}
 
 struct parameters
 {
-	int numSamples = 50000;
-	int dim = 2;
+	int numSamples = 10000;
+	int dim = 784;
 	int classes = 10;
 	int iterations = 500;
-	double threshold = 0.0001;
+	float threshold = 0.0001;
 };
 
-km_float** cu_kmeans(km_float**, int*, int, int, int, double, int*, int*);
-//km_float* thrust_kmeans(int, int, int, km_float*, int*, km_float, int*);
-void transposeHost(km_float*, km_float*, int, int);
+float** cu_kmeans(float, int*, int*, float**, int, int, int);
 
 extern int _debug;
 
-#endif // _KMEANS_GPU_H
+#endif
