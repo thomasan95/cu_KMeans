@@ -128,6 +128,11 @@ km_float** read_file(char* path, int isBinary, int* n, int* d) {
 
 
 /** @brief Function for saving the model
+*	
+*	Format of the save is first, k (number of centroids) is saved
+*	then d (dimension of each centroids). After that, each centroid
+*	is saved, so resulting file is formatted as k, d, c1, c2, c3 ... ck
+*	
 *	@param
 *		kmeans_model const* model: model to save
 *		char const *path: save path
