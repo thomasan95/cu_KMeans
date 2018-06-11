@@ -18,10 +18,10 @@
 *		int *numSamples: write number of samples to numSamples
 *		int *dim: write dimension to dim
 *	@return
-*		float** data stored in 2D array of [numSamples][dim]
+*		km_float** data stored in 2D array of [numSamples][dim]
 */
-float** read_file(char* path, int isBinary, int* numSamples, int* dim) {
-	float **data;
+km_float** read_file(char* path, int isBinary, int* numSamples, int* dim) {
+	km_float **data;
 	int count;
 	int len;
 
@@ -41,15 +41,15 @@ float** read_file(char* path, int isBinary, int* numSamples, int* dim) {
 			printf("File %s dims        = %d\n", path, *dim);
 		}
 
-		data = (float**)malloc((*numSamples) * sizeof(float*));
+		data = (km_float**)malloc((*numSamples) * sizeof(km_float*));
 		assert(data != NULL);
-		data[0] = (float*)malloc((*numSamples) * (*dim) * sizeof(float));
+		data[0] = (km_float*)malloc((*numSamples) * (*dim) * sizeof(km_float));
 		assert(data[0] != NULL);
 		for (int i = 1; i < (*numSamples); i++) {
 			// Set pointers to each data point
 			data[i] = data[i - 1] + (*dim);
 		}
-		count = fread(data[0], sizeof(float), (*dim)*(*numSamples), fptr);
+		count = fread(data[0], sizeof(km_float), (*dim)*(*numSamples), fptr);
 		assert(count == (*dim)*(*numSamples));
 
 		fclose(fptr);
@@ -103,10 +103,10 @@ float** read_file(char* path, int isBinary, int* numSamples, int* dim) {
 			printf("File %s dim        = %d\n", path, *dim);
 		}
 
-		data = (float**)malloc((*numSamples) * sizeof(float*));
+		data = (km_float**)malloc((*numSamples) * sizeof(km_float*));
 		assert(data != NULL);
 		// Set [0]th pointer to start of data
-		data[0] = (float*)malloc((*numSamples) * (*dim) * sizeof(float));
+		data[0] = (km_float*)malloc((*numSamples) * (*dim) * sizeof(km_float));
 		assert(data[0] != NULL);
 		for (int i = 1; i < (*numSamples); i++) {
 			// Set subsequent pointer to next data point
@@ -133,7 +133,7 @@ float** read_file(char* path, int isBinary, int* numSamples, int* dim) {
 *		char const *path: save path
 *	@return 0 if success 1 if failed
 */
-int save_model(float** centroids, char const *path, int isBinary, int numSamples, int dim, int numCentroids) {
+int save_centroids(km_float** centroids, char const *path, int isBinary, int k, int d) {
 	printf("\n==========Saving Model ==========\n");
 
 	clock_t start;
@@ -142,22 +142,24 @@ int save_model(float** centroids, char const *path, int isBinary, int numSamples
 	char command[1024];
 	sprintf(command, "del %s", path);
 	int sys_ret = system(command);
+
+	// Write in Binary
 	if (isBinary) {
 		FILE *f = fopen(path, "wb");
 		if (f == NULL) {
 			printf("Save Failed\n");
 			return 1;
 		}
-		fwrite(&numCentroids, sizeof(int), 1, f);
-		fwrite(&dim, sizeof(int), 1, f);
-		auto write = [&](float *ptr, int size) {
+		fwrite(&k, sizeof(int), 1, f);
+		fwrite(&d, sizeof(int), 1, f);
+		auto write = [&](km_float *ptr, int size) {
 			for (int i = 0; i < size; i++) {
-				float *ptr1 = ptr + i*dim;
-				fwrite(ptr1, sizeof(float), dim, f);
+				km_float *ptr1 = ptr + i*d;
+				fwrite(ptr1, sizeof(km_float), d, f);
 			}
 		};
 		printf("Saving Centroids\n");
-		write(centroids[0], numCentroids);
+		write(centroids[0], k);
 		fclose(f);
 	}
 	else {
@@ -167,9 +169,9 @@ int save_model(float** centroids, char const *path, int isBinary, int numSamples
 			printf("Save Failed\n");
 			return 1;
 		}
-		for (int i = 0; i < numCentroids; i++) {
+		for (int i = 0; i < k; i++) {
 			fprintf(f, "%d ", i);
-			for (int j = 0; j < dim; j++) {
+			for (int j = 0; j < d; j++) {
 				fprintf(f, "%f ", centroids[i][j]);
 			}
 			fprintf(f, "\n");

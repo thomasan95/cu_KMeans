@@ -10,6 +10,7 @@
 
 int      _debug;
 #include "kmeans.h"
+#include "file_utils.h"
 
 
 int main(int argc, char **argv) {
@@ -79,14 +80,16 @@ int main(int argc, char **argv) {
 		printf("\n\n");
 	}
 
-
+    int saved = save_centroids(centroids, labels, "saved_centroids.bin", 1, k, d);
+    if(saved == 0) {
+        printf("Save Successful\n");
+    }
 
     free(data[0]);
     free(data);
     free(labels);
     free(centroids[0]);
     free(centroids);
-
 
     return(0);
 }
