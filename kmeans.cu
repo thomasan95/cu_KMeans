@@ -177,9 +177,7 @@ km_float** cu_kmeans(km_float **data,
 {
     int      i, j, index, loop=0;
     int     *counts; 
-                              
-	km_float    delta = 0.0;;
-
+	km_float    delta = 0.0;
     km_float  **centroids;     
     km_float  **h_centroids;
     km_float  **newClusters;  
@@ -197,6 +195,7 @@ km_float** cu_kmeans(km_float **data,
         }
     }
 
+    // Set maximum and minimim indices for random selection of centroids
 	int minIdx = 0;
 	int maxIdx = n;
 	int *randValues = new int(k);
@@ -243,13 +242,13 @@ km_float** cu_kmeans(km_float **data,
     const unsigned int clusterBlockSharedDataSize = THREADS_PER_BLOCK * sizeof(unsigned char);
 #endif
 
-    const unsigned int numReductionThreads = nextPowerOfTwo(numBlocks);
-    const unsigned int reductionBlockSharedDataSize = numReductionThreads * sizeof(unsigned int);
+    const unsigned int delta_threads = nextPowerOfTwo(numBlocks);
+    const unsigned int reductionBlockSharedDataSize = delta_threads * sizeof(unsigned int);
 
 	CHECK(cudaMalloc(&d_data, n*d*sizeof(km_float)));
 	CHECK(cudaMalloc(&d_centroids, k*d*sizeof(km_float)));
 	CHECK(cudaMalloc(&d_currCluster, n*sizeof(int)));
-	CHECK(cudaMalloc(&d_deltas, numReductionThreads*sizeof(unsigned int)));
+	CHECK(cudaMalloc(&d_deltas, delta_threads*sizeof(unsigned int)));
 
 	CHECK(cudaMemcpy(d_data, h_data[0],
               n*d*sizeof(km_float), cudaMemcpyHostToDevice));
@@ -271,9 +270,9 @@ km_float** cu_kmeans(km_float **data,
         cudaDeviceSynchronize();
 		CHECK(cudaGetLastError());
 
-        compute_delta <<< 1, numReductionThreads, reductionBlockSharedDataSize >>>(d_deltas, 
-																					numBlocks,
-																					numReductionThreads);
+        compute_delta <<< 1, delta_threads, reductionBlockSharedDataSize >>>(d_deltas, 
+                                                                            numBlocks,
+                                                                            delta_threads);
 
         cudaDeviceSynchronize();
 		CHECK(cudaGetLastError());
@@ -409,10 +408,10 @@ km_km_float* thrust_kmeans(int n,
 #else
 	const unsigned int sharedClusterBlockSize = THREADS_PER_BLOCK * sizeof(unsigned char);
 #endif
-	const unsigned int numReductionThreads = nextPowerOfTwo(numClusterBlocks);
+	const unsigned int delta_threads = nextPowerOfTwo(numClusterBlocks);
 	const unsigned int reductionBlockSharedDataSize =
-		numReductionThreads * sizeof(unsigned int);
-	thrust::device_vector<int> d_intermediate(numReductionThreads * sizeof(unsigned int));
+		delta_threads * sizeof(unsigned int);
+	thrust::device_vector<int> d_intermediate(delta_threads * sizeof(unsigned int));
 	// Cast raw pointers to prepare for kernel call
 	km_km_float* pd_data = thrust::raw_pointer_cast(d_data.data());			// assigned
 	int* pd_currCluster = thrust::raw_pointer_cast(d_currCluster.data());	// assigned
@@ -430,9 +429,9 @@ km_km_float* thrust_kmeans(int n,
 			d,
 			k);
 		cudaDeviceSynchronize();
-		compute_delta << <1, numReductionThreads, reductionBlockSharedDataSize >> > (pd_intermediate,
+		compute_delta << <1, delta_threads, reductionBlockSharedDataSize >> > (pd_intermediate,
 			numClusterBlocks,
-			numReductionThreads);
+			delta_threads);
 		cudaDeviceSynchronize();
 		int d;
 		cudaMemcpy(&d, pd_intermediate, sizeof(int), cudaMemcpyDeviceToHost);
