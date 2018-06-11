@@ -30,6 +30,7 @@ struct parameters
 	const int classes = 10;
 	const int iterations = 500;
 	const km_float threshold = 0.0001;
+    const int step = 5;
 };
 
 struct init_data

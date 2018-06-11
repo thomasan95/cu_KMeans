@@ -9,7 +9,7 @@
 
 #include "kmeans.h"
 #include "file_utils.h"
-#include "Read_MNIST.h"
+// #include "read_mnist.h"
 
 #define MAX_MEAN 100
 
@@ -17,8 +17,8 @@ int main(int argc, char **argv) {
 
 	km_float ** data;
 	km_float ** centroids;
-#ifdef LOAD_MNIST
 
+#ifdef LOAD_MNIST
     init_data mnistdata;
     readMNISTFloat(&data, "/path/to/labels", "/path/to/images");
     int n = mnistdata.numSamples;
@@ -40,12 +40,14 @@ int main(int argc, char **argv) {
 	int n = params.numSamples;
 	int k = params.classes;
 	int d = params.dim;
-   
+    int step = params.step;
+
 	int loop_iterations;
 
 	int* pred_labels;
 	pred_labels = (int *)malloc(n * sizeof(int));
     assert(pred_labels != NULL);
+
 	// Allocate Memory
 	printf("[INFO]: Allocating Memory\n");
 	try {
@@ -61,11 +63,9 @@ int main(int argc, char **argv) {
 	std::default_random_engine generator;
 	km_float *means = new km_float(k);
     km_flot *means_y = new km_float(k);
-	int count = 0;
     /*
 	for (int i = 0; i < k; i++) {
-		means[i] = (km_float)count;
-		count += 5;
+		means[i] = (km_float)(i * 5);
 	}
     */
     for(int i = 0; i < k; i++) {
@@ -96,20 +96,23 @@ int main(int argc, char **argv) {
 		}
 	}    
 	if (data == NULL) {
+        printf("Data failed to allocate and set properly!\n")
         exit(1);
     }
 #endif
     centroids = cu_kmeans(data, d, n, k, threshold, pred_labels, &loop_iterations);
 
-	for (int a = 0; a < k; a++) {
-		printf("centroids %d: ", a);
-		for (int b = 0; b < d; b++) {
-			printf("%f ", centroids[a][b]);
+	for (int i = 0; i < k; i++) {
+		printf("centroids %d: [ ", i);
+		for (int j = 0; j < d; j++) {
+			printf("%f ", centroids[i][j]);
 		}
-		printf("\n\n");
-	}
-
+		printf("]\n\n");
+    }
+    
+    // save centroids as binary file
     int saved = save_centroids(centroids, labels, "saved_centroids.bin", 1, k, d);
+
     if(saved == 0) {
         printf("Save Successful\n");
     }
@@ -119,8 +122,8 @@ int main(int argc, char **argv) {
     free(labels);
     free(centroids[0]);
     free(centroids);
-    delete(means);
-    delete(means_y);
+    delete means;
+    delete means_y;
 
     return(0);
 }
