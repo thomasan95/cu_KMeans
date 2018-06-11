@@ -11,6 +11,7 @@
 #include "file_utils.h"
 #include "Read_MNIST.h"
 
+#define MAX_MEAN 100
 
 int main(int argc, char **argv) {
 
@@ -59,20 +60,36 @@ int main(int argc, char **argv) {
 	printf("[INFO]: Generating Random Values\n");
 	std::default_random_engine generator;
 	km_float *means = new km_float(k);
+    km_flot *means_y = new km_float(k);
 	int count = 0;
+    /*
 	for (int i = 0; i < k; i++) {
 		means[i] = (km_float)count;
 		count += 5;
 	}
+    */
+    for(int i = 0; i < k; i++) {
+        means[i] = rand() % MAX_MEAN + 1;
+        means_y[i] = rand() % MAX_MEAN + 1;
+    }
 	int pointsPerLabel = n / k;
 	km_float mean = 0.0;
-
+    km_float mean_y = 0.0;
 	for (int i = 0; i < k; i++) {
-		mean = means[i];
-		std::normal_distribution<km_float> distribution(mean, 2.0);
+        // Sample from random distribution for varying X and Y means
+		mean_x = means[i];
+        mean_y = means_y[i];
+
+		std::normal_distribution<km_float> distribution_x(mean_x, 1.0);
+        std::normal_distribution<km_float> distribution_y(mean_y, 1.0);
 		for (int j = 0; j < pointsPerLabel; j++) {
 			for (int z = 0; z < d; z++) {
-				km_float num = distribution(generator);
+                km_float num;
+                if(z == 0) { 
+                    num = distribution_x(generator);
+                } else {
+                    num = distribution_y(generator);
+                }
 				data[i * pointsPerLabel + j][z] = num;
 			}
 
@@ -102,6 +119,8 @@ int main(int argc, char **argv) {
     free(labels);
     free(centroids[0]);
     free(centroids);
+    delete(means);
+    delete(means_y);
 
     return(0);
 }
