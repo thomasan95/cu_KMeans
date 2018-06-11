@@ -65,8 +65,9 @@ int main(int argc, char **argv) {
 
 		}
 	}    
-	if (data == NULL) exit(1);
-
+	if (data == NULL) {
+        exit(1);
+    }
 	labels = (int*) malloc(n * sizeof(int));
     assert(labels != NULL);
 
