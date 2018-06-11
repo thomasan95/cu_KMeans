@@ -1,14 +1,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>     /* strtok() */
-#include <sys/types.h>  /* open() */
+#include <string.h>   
+#include <sys/types.h> 
 #include <sys/stat.h>
 #include <random>
 #include <vector>
 
-
-int      _debug;
 #include "kmeans.h"
 #include "file_utils.h"
 
@@ -18,8 +16,7 @@ int main(int argc, char **argv) {
 	km_float ** data;
 	km_float ** centroids;
 
-    _debug = 1;
-	// Load Parameters
+    // Load Parameters
 	parameters params;
 
 	km_float threshold = params.threshold;

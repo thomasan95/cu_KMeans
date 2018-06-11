@@ -32,8 +32,18 @@ struct parameters
 	km_float threshold = 0.0001;
 };
 
-km_float** cu_kmeans(km_float, int*, int*, km_float**, int, int, int);
+struct init_data
+{
+    int numSamples;
+    int dim;
+    int classes;
+    int iterations;
+    km_float threshold = 0.0001;
+    km_float** data;
+    int* labels;
 
-extern int _debug;
+};
+
+km_float** cu_kmeans(km_float, int*, int*, km_float**, int, int, int);
 
 #endif
