@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -27,23 +26,23 @@ static inline int nextPowerOfTwo(int n) {
 *		int d: dimension of data and centroids
 *		int n: number of data points
 *		int k: number of centroids
-*		float *d_data: data loaded onto device
-*		float *centroids: device centroids to compute
+*		km_float *d_data: data loaded onto device
+*		km_float *centroids: device centroids to compute
 *		int dataidx: idx of data point from warp address
 *		int centroididx: idx of centroid from warp address
 *	@return:
-*		float val: euclidean distance (L2 norm)
+*		km_float val: euclidean distance (L2 norm)
 */
-__host__ __device__ inline static float get_norm(int    d,
+__host__ __device__ inline static km_float get_norm(int    d,
 												int    n,
 												int    k,
-												float *d_data,     
-												float *centroids, 
+												km_float *d_data,     
+												km_float *centroids, 
 												int    dataidx,
 												int    centroididx)
 {
     int i;
-    float val=0.0;
+    km_float val=0.0;
 
     for (i = 0; i < d; i++) {
 		val += (d_data[n * i + dataidx] - centroids[k * i + centroididx]) *
@@ -58,16 +57,16 @@ __host__ __device__ inline static float get_norm(int    d,
 *		int d: dimension of data and centroids
 *		int n: number of data points
 *		int k: number of centroids
-*		float *d_data: data loaded onto device
-*		float *d_centroids: device centroids to compute
+*		km_float *d_data: data loaded onto device
+*		km_float *d_centroids: device centroids to compute
 *		int *d_currCluster: current label
 *		int *d_deltas: keep track of amount of changes
 */
 __global__ static void find_nearest_centroid(int d,
 											  int n,
 											  int k,
-											  float *d_data,          
-											  float *d_centroids,  
+											  km_float *d_data,          
+											  km_float *d_centroids,  
 											  int *d_currCluster,       
 											  int *d_deltas)
 {
@@ -75,9 +74,9 @@ __global__ static void find_nearest_centroid(int d,
 
     unsigned char *change_cluster = (unsigned char *)smem;
 #if USE_SHARED_MEM
-    float *centroids = (float *)(smem + blockDim.x);
+    km_float *centroids = (km_float *)(smem + blockDim.x);
 #else
-    float *centroids = d_centroids;
+    km_float *centroids = d_centroids;
 #endif
 
 	change_cluster[threadIdx.x] = 0;
@@ -95,7 +94,7 @@ __global__ static void find_nearest_centroid(int d,
 
     if (dataidx < n) {
         int   index, i;
-        float dist, min_dist;
+        km_float dist, min_dist;
 
         index    = 0;
         min_dist = get_norm(d, n, k, d_data, centroids, dataidx, 0);
@@ -164,12 +163,12 @@ __global__ static void compute_delta(int *d_deltas,
 *		int d: dimension of dataset
 *		int n: number of data points
 *		int k: number of centroids to find
-*		float threshold: threshold to kmeans termination
+*		km_float threshold: threshold to kmeans termination
 *		int *currCluster: storage of labels
 *		int *loop_iterations: store loops
 */
-float** cu_kmeans(float **data,   
-					float   threshold,
+km_float** cu_kmeans(km_float **data,   
+					km_float   threshold,
 					int    *currCluster,
 					int    *loop_iterations
 					int     d,    
@@ -179,19 +178,19 @@ float** cu_kmeans(float **data,
     int      i, j, index, loop=0;
     int     *counts; 
                               
-	float    delta = 0.0;;
+	km_float    delta = 0.0;;
 
-    float  **centroids;     
-    float  **h_centroids;
-    float  **newClusters;  
+    km_float  **centroids;     
+    km_float  **h_centroids;
+    km_float  **newClusters;  
 
-    float *d_data;
-    float *d_centroids;
+    km_float *d_data;
+    km_float *d_centroids;
     int *d_currCluster;
     int *d_deltas;
 
-	float  **h_data;
-    malloc2D(h_data, d, n, float);
+	km_float  **h_data;
+    malloc2D(h_data, d, n, km_float);
     for (i = 0; i < d; i++) {
         for (j = 0; j < n; j++) {
             h_data[i][j] = data[j][i];
@@ -206,7 +205,7 @@ float** cu_kmeans(float **data,
 	}
 
 	// Initilize Random Centroids
-	malloc2D(h_centroids, d, k, float);
+	malloc2D(h_centroids, d, k, km_float);
 	for (j = 0; j < k; j++) {
 		index = randValues[j];
 		for (i = 0; i < d; i++) {
@@ -223,14 +222,14 @@ float** cu_kmeans(float **data,
 	counts = (int*) calloc(k, sizeof(int));
     assert(counts != NULL);
 
-    malloc2D(newClusters, d, k, float);
-    memset(newClusters[0], 0, d * k * sizeof(float));
+    malloc2D(newClusters, d, k, km_float);
+    memset(newClusters[0], 0, d * k * sizeof(km_float));
 
 
     //const unsigned int THREADS_PER_BLOCK = 128;
     const unsigned int numBlocks = (n + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
 #if USE_SHARED_MEM
-    const unsigned int clusterBlockSharedDataSize = THREADS_PER_BLOCK * sizeof(unsigned char) + k * d * sizeof(float);
+    const unsigned int clusterBlockSharedDataSize = THREADS_PER_BLOCK * sizeof(unsigned char) + k * d * sizeof(km_float);
 
     cudaDeviceProp deviceProp;
     int deviceNum;
@@ -247,19 +246,19 @@ float** cu_kmeans(float **data,
     const unsigned int numReductionThreads = nextPowerOfTwo(numBlocks);
     const unsigned int reductionBlockSharedDataSize = numReductionThreads * sizeof(unsigned int);
 
-	CHECK(cudaMalloc(&d_data, n*d*sizeof(float)));
-	CHECK(cudaMalloc(&d_centroids, k*d*sizeof(float)));
+	CHECK(cudaMalloc(&d_data, n*d*sizeof(km_float)));
+	CHECK(cudaMalloc(&d_centroids, k*d*sizeof(km_float)));
 	CHECK(cudaMalloc(&d_currCluster, n*sizeof(int)));
 	CHECK(cudaMalloc(&d_deltas, numReductionThreads*sizeof(unsigned int)));
 
 	CHECK(cudaMemcpy(d_data, h_data[0],
-              n*d*sizeof(float), cudaMemcpyHostToDevice));
+              n*d*sizeof(km_float), cudaMemcpyHostToDevice));
 	CHECK(cudaMemcpy(d_currCluster, currCluster,
               n*sizeof(int), cudaMemcpyHostToDevice));
 
     do {
 		printf("[ITER: %d]: CALLING KERNEL\n", loop + 1);
-		CHECK(cudaMemcpy(d_centroids, h_centroids[0], k*d*sizeof(float), cudaMemcpyHostToDevice));
+		CHECK(cudaMemcpy(d_centroids, h_centroids[0], k*d*sizeof(km_float), cudaMemcpyHostToDevice));
 
 		find_nearest_centroid<<< numBlocks, THREADS_PER_BLOCK, clusterBlockSharedDataSize >>> (d,
 																								n,
@@ -281,7 +280,7 @@ float** cu_kmeans(float **data,
 
         int de;
 		CHECK(cudaMemcpy(&de, d_deltas, sizeof(int), cudaMemcpyDeviceToHost));
-        delta = (float)de;
+        delta = (km_float)de;
 
 		CHECK(cudaMemcpy(currCluster, d_currCluster, n*sizeof(int), cudaMemcpyDeviceToHost));
 
@@ -311,7 +310,7 @@ float** cu_kmeans(float **data,
     *loop_iterations = loop + 1;
 
 
-    malloc2D(centroids, k, d, float);
+    malloc2D(centroids, k, d, km_float);
     for (i = 0; i < k; i++) {
         for (j = 0; j < d; j++) {
 			centroids[i][j] = h_centroids[j][i];
@@ -336,39 +335,39 @@ float** cu_kmeans(float **data,
 
 
 /*
-km_float* thrust_kmeans(int n,
+km_km_float* thrust_kmeans(int n,
 						int d, 
 						int k,
-						km_float *data, 
+						km_km_float *data, 
 						int *labels,
-						km_float threshold, 
+						km_km_float threshold, 
 						int* loop_iterations)
 {
 	int i, j, index, loop_iter = 0;
-	km_float delta;
+	km_km_float delta;
 	// Transpose data
-	//thrust::host_vector<km_float> h_data(d * k);
-	//thrust::host_vector<km_float> h_centroids(d * k);
+	//thrust::host_vector<km_km_float> h_data(d * k);
+	//thrust::host_vector<km_km_float> h_centroids(d * k);
 	//thrust::host_vector<int> currCluster(n); // initialized to all zeros
-	//thrust::host_vector<km_float> newClusters(d * k);
+	//thrust::host_vector<km_km_float> newClusters(d * k);
 	//transposeHost(h_data, data, n, d);
 	// Copy host data and labels to Device
 	printf("Copy Data to Host Vector\n");
-	thrust::host_vector<km_float> host_data(n * d);
+	thrust::host_vector<km_km_float> host_data(n * d);
 	for (i = 0; i < n * d; i++) {
 		host_data[i] = data[i];
 	}
-	thrust::device_vector<km_float> d_data(host_data.begin(), host_data.end());
+	thrust::device_vector<km_km_float> d_data(host_data.begin(), host_data.end());
 	//thrust::copy(host_data.begin(), host_data.end(), d_data.begin());
 	//d_data = host_data;
 	printf("hi\n");
 	thrust::device_ptr<int> labels_ptr(labels);
 	thrust::device_vector<int> d_labels(labels_ptr, labels_ptr + n);
-	//thrust::device_vector<km_float> d_centroids(k * d);
+	//thrust::device_vector<km_km_float> d_centroids(k * d);
 	//thrust::device_vector<int> d_currCluster(n);
 	printf("DEBUG: 2\n");
 	// Allocate memory for centroids and cluster tracking on host
-	km_float* h_centroids = (km_float *)malloc((long long)k * d * sizeof(km_float));
+	km_km_float* h_centroids = (km_km_float *)malloc((long long)k * d * sizeof(km_km_float));
 	int* currCluster = (int *)malloc((long long)n * sizeof(int));
 	// Initialize centroids to K random points
 	int minIdx = 0;
@@ -384,21 +383,21 @@ km_float* thrust_kmeans(int n,
 		}
 	}
 	printf("DEBUG: 4\n");
-	thrust::device_vector<km_float> d_centroids(h_centroids, h_centroids + (k * d));
+	thrust::device_vector<km_km_float> d_centroids(h_centroids, h_centroids + (k * d));
 	// Initialize initial clusters all to -1
 	for (i = 0; i < n; i++) {
 		currCluster[i] = -1;
 	}
 	thrust::device_vector<int> d_currCluster(currCluster, currCluster + n);
-	km_float* newClusters = (km_float *)malloc((long long)d * k * sizeof(km_float));
+	km_km_float* newClusters = (km_km_float *)malloc((long long)d * k * sizeof(km_km_float));
 	// Initialize cluster counts
 	int *counts;
 	counts = (int*)calloc(k, sizeof(int));
 	assert(counts != NULL);
 	printf("DEBUG: 5\n");
-	const unsigned int numClusterBlocks = ceil((km_float)n / THREADS_PER_BLOCK);
+	const unsigned int numClusterBlocks = ceil((km_km_float)n / THREADS_PER_BLOCK);
 #if USE_SHARED_MEM
-	const unsigned int sharedClusterBlockSize = THREADS_PER_BLOCK * sizeof(unsigned char) + k * d * sizeof(km_float);
+	const unsigned int sharedClusterBlockSize = THREADS_PER_BLOCK * sizeof(unsigned char) + k * d * sizeof(km_km_float);
 	cudaDeviceProp devProp;
 	int dev;
 	cudaGetDevice(&dev);
@@ -415,9 +414,9 @@ km_float* thrust_kmeans(int n,
 		numReductionThreads * sizeof(unsigned int);
 	thrust::device_vector<int> d_intermediate(numReductionThreads * sizeof(unsigned int));
 	// Cast raw pointers to prepare for kernel call
-	km_float* pd_data = thrust::raw_pointer_cast(d_data.data());			// assigned
+	km_km_float* pd_data = thrust::raw_pointer_cast(d_data.data());			// assigned
 	int* pd_currCluster = thrust::raw_pointer_cast(d_currCluster.data());	// assigned
-	km_float* pd_centroids = thrust::raw_pointer_cast(d_centroids.data());	// assigned
+	km_km_float* pd_centroids = thrust::raw_pointer_cast(d_centroids.data());	// assigned
 	int* pd_intermediate = thrust::raw_pointer_cast(d_intermediate.data());	// assigned
 	printf("DEBUG: 6\n");
 	do {
@@ -437,7 +436,7 @@ km_float* thrust_kmeans(int n,
 		cudaDeviceSynchronize();
 		int d;
 		cudaMemcpy(&d, pd_intermediate, sizeof(int), cudaMemcpyDeviceToHost);
-		delta = (km_float)d;
+		delta = (km_km_float)d;
 		for (i = 0; i < n; i++) {
 			index = currCluster[i];
 			counts[i]++;
@@ -461,7 +460,7 @@ km_float* thrust_kmeans(int n,
 	} while (delta > threshold && loop_iter++ < MAX_ITERATIONS);
 	*loop_iterations = loop_iter + 1;
 	// Copy back centroids from Device to Host then transpose
-	km_float* ret_centroids_tmp = malloc_aligned_float<km_float>((long long)d * k);
+	km_km_float* ret_centroids_tmp = malloc_aligned_km_float<km_km_float>((long long)d * k);
 	thrust::copy(d_centroids.begin(), d_centroids.end(), ret_centroids_tmp);
 	
 	//for (i = 0; i < k; i++) {
@@ -472,7 +471,7 @@ km_float* thrust_kmeans(int n,
 	transposeHost(h_centroids, ret_centroids_tmp, d, k);
 	printf("DEBUG: 7\n");
 	delete(randValues);
-	//free<km_float>(ret_centroids_tmp);
+	//free<km_km_float>(ret_centroids_tmp);
 	free(currCluster);
 	free(newClusters);
 	printf("DEBUG: 8\n");

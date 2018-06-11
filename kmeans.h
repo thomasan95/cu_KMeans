@@ -29,10 +29,10 @@ struct parameters
 	int dim = 784;
 	int classes = 10;
 	int iterations = 500;
-	float threshold = 0.0001;
+	km_float threshold = 0.0001;
 };
 
-float** cu_kmeans(float, int*, int*, float**, int, int, int);
+km_float** cu_kmeans(km_float, int*, int*, km_float**, int, int, int);
 
 extern int _debug;
 

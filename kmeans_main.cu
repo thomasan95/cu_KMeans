@@ -14,14 +14,14 @@ int      _debug;
 
 int main(int argc, char **argv) {
 
-	float ** data;
-	float ** centroids;
+	km_float ** data;
+	km_float ** centroids;
 
     _debug = 1;
 	// Load Parameters
 	parameters params;
 
-	float threshold = params.threshold;
+	km_float threshold = params.threshold;
 	int n = params.numSamples;
 	int k = params.classes;
 	int d = params.dim;
@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 	// Allocate Memory
 	printf("[INFO]: Allocating Memory\n");
 	try {
-		malloc2D(data, n, d, float);
+		malloc2D(data, n, d, km_float);
 	}
 	catch (std::bad_alloc const &e) {
 		free(data[0]);
@@ -44,21 +44,21 @@ int main(int argc, char **argv) {
 	// Generate Random Data of varying mean, with stddev 2.0
 	printf("[INFO]: Generating Random Values\n");
 	std::default_random_engine generator;
-	float *means = new float(k);
+	km_float *means = new km_float(k);
 	int count = 0;
 	for (int i = 0; i < k; i++) {
-		means[i] = (float)count;
+		means[i] = (km_float)count;
 		count += 5;
 	}
 	int pointsPerLabel = n / k;
-	float mean = 0.0;
+	km_float mean = 0.0;
 
 	for (int i = 0; i < k; i++) {
 		mean = means[i];
-		std::normal_distribution<float> distribution(mean, 2.0);
+		std::normal_distribution<km_float> distribution(mean, 2.0);
 		for (int j = 0; j < pointsPerLabel; j++) {
 			for (int z = 0; z < d; z++) {
-				float num = distribution(generator);
+				km_float num = distribution(generator);
 				data[i * pointsPerLabel + j][z] = num;
 			}
 
