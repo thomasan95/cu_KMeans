@@ -1,4 +1,4 @@
-// #include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <cstring>    
@@ -15,12 +15,12 @@
 *	@param
 *		char* path: path to read file from
 *		int isBinary: Whether file in binary format or not
-*		int *numSamples: write number of samples to numSamples
-*		int *dim: write dimension to dim
+*		int *n: write number of samples to n
+*		int *d: write dension to d
 *	@return
-*		km_float** data stored in 2D array of [numSamples][dim]
+*		km_float** data stored in 2D array of [n][d]
 */
-km_float** read_file(char* path, int isBinary, int* numSamples, int* dim) {
+km_float** read_file(char* path, int isBinary, int* n, int* d) {
 	km_float **data;
 	int count;
 	int len;
@@ -32,25 +32,25 @@ km_float** read_file(char* path, int isBinary, int* numSamples, int* dim) {
 			printf("Error reading file %s\n", path);
 			exit(0);
 		}
-		count = fread(numSamples, sizeof(int), 1, fptr);
+		count = fread(n, sizeof(int), 1, fptr);
 		assert(count == 1);
-		count = fread(dim, sizeof(int), 1, fptr);
+		count = fread(d, sizeof(int), 1, fptr);
 		assert(count == 1);
 		if (_debug) {
-			printf("File %s numSamples  = %d\n", path, *numSamples);
-			printf("File %s dims        = %d\n", path, *dim);
+			printf("File %s n  = %d\n", path, *n);
+			printf("File %s ds          = %d\n", path, *d);
 		}
 
-		data = (km_float**)malloc((*numSamples) * sizeof(km_float*));
+		data = (km_float**)malloc((*n) * sizeof(km_float*));
 		assert(data != NULL);
-		data[0] = (km_float*)malloc((*numSamples) * (*dim) * sizeof(km_float));
+		data[0] = (km_float*)malloc((*n) * (*d) * sizeof(km_float));
 		assert(data[0] != NULL);
-		for (int i = 1; i < (*numSamples); i++) {
+		for (int i = 1; i < (*n); i++) {
 			// Set pointers to each data point
-			data[i] = data[i - 1] + (*dim);
+			data[i] = data[i - 1] + (*d);
 		}
-		count = fread(data[0], sizeof(km_float), (*dim)*(*numSamples), fptr);
-		assert(count == (*dim)*(*numSamples));
+		count = fread(data[0], sizeof(km_float), (*d)*(*n), fptr);
+		assert(count == (*d)*(*n));
 
 		fclose(fptr);
 	}
@@ -66,7 +66,7 @@ km_float** read_file(char* path, int isBinary, int* numSamples, int* dim) {
 		curLen = MAX_CHAR_PER_LINE;
 		line = (char*)malloc(curLen);
 		assert(line != NULL);
-		(*numSamples) = 0;
+		(*n) = 0;
 		while (fgets(line, curLen, fptr) != NULL) {
 			while (strlen(line) == curLen - 1) {
 				// Not complete line read
@@ -82,40 +82,40 @@ km_float** read_file(char* path, int isBinary, int* numSamples, int* dim) {
 				assert(ret != NULL);
 			}
 			if (strtok(line, "\t\n") != 0) {
-				(*numSamples)++;
+				(*n)++;
 			}
 		}
 		rewind(fptr);
 		if (_debug) {
 			printf("curLen = %d\n", curLen);
 		}
-		(*dim) = 0;
+		(*d) = 0;
 		while (fgets(line, curLen, fptr) != NULL) {
 			if (strtok(line, "\t\n") != 0) {
-				/* ignore the id (first coordinate): dim = 1; */
-				while (strtok(NULL, " ,\t\n") != NULL) (*numSamples)++;
+				/* ignore the id (first coordinate): d = 1; */
+				while (strtok(NULL, " ,\t\n") != NULL) (*n)++;
 				break;
 			}
 		}
 		rewind(fptr);
 		if (_debug) {
-			printf("File %s numSamples = %d\n", path, *numSamples);
-			printf("File %s dim        = %d\n", path, *dim);
+			printf("File %s n = %d\n", path, *n);
+			printf("File %s d        = %d\n", path, *d);
 		}
 
-		data = (km_float**)malloc((*numSamples) * sizeof(km_float*));
+		data = (km_float**)malloc((*n) * sizeof(km_float*));
 		assert(data != NULL);
 		// Set [0]th pointer to start of data
-		data[0] = (km_float*)malloc((*numSamples) * (*dim) * sizeof(km_float));
+		data[0] = (km_float*)malloc((*n) * (*d) * sizeof(km_float));
 		assert(data[0] != NULL);
-		for (int i = 1; i < (*numSamples); i++) {
+		for (int i = 1; i < (*n); i++) {
 			// Set subsequent pointer to next data point
-			data[i] = data[i - 1] + (*dim);
+			data[i] = data[i - 1] + (*d);
 		}
 		int i = 0;
 		while (fgets(line, curLen, fptr) != NULL) {
 			if (strtok(line, " \t\n") == NULL) continue;
-			for (int j = 0; j < (*dim); j++) {
+			for (int j = 0; j < (*d); j++) {
 				data[i][j] = atof(strtok(NULL, " ,\t\n"));
 			}
 			i++;
@@ -135,7 +135,6 @@ km_float** read_file(char* path, int isBinary, int* numSamples, int* dim) {
 */
 int save_centroids(km_float** centroids, char const *path, int isBinary, int k, int d) {
 	printf("\n==========Saving Model ==========\n");
-
 	clock_t start;
 	start = clock();
 
@@ -152,12 +151,14 @@ int save_centroids(km_float** centroids, char const *path, int isBinary, int k, 
 		}
 		fwrite(&k, sizeof(int), 1, f);
 		fwrite(&d, sizeof(int), 1, f);
+
 		auto write = [&](km_float *ptr, int size) {
 			for (int i = 0; i < size; i++) {
 				km_float *ptr1 = ptr + i*d;
 				fwrite(ptr1, sizeof(km_float), d, f);
 			}
 		};
+
 		printf("Saving Centroids\n");
 		write(centroids[0], k);
 		fclose(f);
