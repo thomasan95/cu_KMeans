@@ -25,11 +25,11 @@ inline void CHECK(cudaError_t e) {
 
 struct parameters
 {
-	int numSamples = 10000;
-	int dim = 784;
-	int classes = 10;
-	int iterations = 500;
-	km_float threshold = 0.0001;
+	const int numSamples = 10000;
+	const int dim = 784;
+	const int classes = 10;
+	const int iterations = 500;
+	const km_float threshold = 0.0001;
 };
 
 struct init_data
