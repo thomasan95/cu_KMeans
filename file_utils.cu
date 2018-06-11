@@ -12,6 +12,10 @@
 
 
 /** @brief reads file from specified path
+*
+*	If read binary, assumes that n (number of data points) and d (dimension)
+*	are read in first. Data will then be read in one row at a time.
+*
 *	@param
 *		char* path: path to read file from
 *		int isBinary: Whether file in binary format or not
@@ -33,13 +37,12 @@ km_float** read_file(char* path, int isBinary, int* n, int* d) {
 			exit(0);
 		}
 		count = fread(n, sizeof(int), 1, fptr);
-		assert(count == 1);
+		assert(count == 1); // assert read properly
 		count = fread(d, sizeof(int), 1, fptr);
-		assert(count == 1);
-		if (_debug) {
-			printf("File %s n  = %d\n", path, *n);
-			printf("File %s ds          = %d\n", path, *d);
-		}
+		assert(count == 1); // assert read properly
+
+		printf("File %s n  = %d\n", path, *n);
+		printf("File %s d  = %d\n", path, *d);
 
 		data = (km_float**)malloc((*n) * sizeof(km_float*));
 		assert(data != NULL);
@@ -114,7 +117,9 @@ km_float** read_file(char* path, int isBinary, int* n, int* d) {
 		}
 		int i = 0;
 		while (fgets(line, curLen, fptr) != NULL) {
-			if (strtok(line, " \t\n") == NULL) continue;
+			if (strtok(line, " \t\n") == NULL) { 
+				continue;
+			}
 			for (int j = 0; j < (*d); j++) {
 				data[i][j] = atof(strtok(NULL, " ,\t\n"));
 			}
