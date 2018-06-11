@@ -9,13 +9,29 @@
 
 #include "kmeans.h"
 #include "file_utils.h"
+#include "Read_MNIST.h"
 
 
 int main(int argc, char **argv) {
 
 	km_float ** data;
 	km_float ** centroids;
+#ifdef LOAD_MNIST
 
+    init_data mnistdata;
+    readMNISTFloat(&data, "/path/to/labels", "/path/to/images");
+    int n = mnistdata.numSamples;
+    int k = mnistdata.classes;
+    int d = mnistdata.dim;
+    data = mnistdata.data;
+    int* true_labels;
+    true_labels = mnist.labels;
+    kmfloat threshold = mnist.threshold;
+    int* pred_labels; 
+    pred_labels = (int *)malloc(n * sizeof(int));
+
+#else
+    printf("Not using any dataset, generating random data specified in parameters!\n");
     // Load Parameters
 	parameters params;
 
@@ -26,9 +42,9 @@ int main(int argc, char **argv) {
    
 	int loop_iterations;
 
-	int* labels;
-	labels = (int *)malloc(sizeof(int) * n);
-
+	int* pred_labels;
+	pred_labels = (int *)malloc(n * sizeof(int));
+    assert(pred_labels != NULL);
 	// Allocate Memory
 	printf("[INFO]: Allocating Memory\n");
 	try {
@@ -65,10 +81,8 @@ int main(int argc, char **argv) {
 	if (data == NULL) {
         exit(1);
     }
-	labels = (int*) malloc(n * sizeof(int));
-    assert(labels != NULL);
-
-    centroids = cu_kmeans(data, d, n, k, threshold, labels, &loop_iterations);
+#endif
+    centroids = cu_kmeans(data, d, n, k, threshold, pred_labels, &loop_iterations);
 
 	for (int a = 0; a < k; a++) {
 		printf("centroids %d: ", a);
