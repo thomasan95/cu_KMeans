@@ -5,7 +5,6 @@
 
 typedef float km_float; 
 
-
 // Allocate a 2D array with pointers set spaced by dimension of data
 #define malloc2D(name, xDim, yDim, type) do {               \
     name = (type **)malloc(xDim * sizeof(type *));          \
@@ -25,8 +24,8 @@ inline void CHECK(cudaError_t e) {
 
 struct parameters
 {
-	int numSamples = 1000;
-	int dim = 2;
+	long numSamples = 100000;
+	int dim = 200;
 	int classes = 10;
 	int iterations = 500;
 	km_float threshold = 0.0001;
@@ -44,7 +43,10 @@ struct init_data
 
 };
 
-km_float** cu_kmeans(km_float**, km_float, 
-					int*, int*,  int, int, int, FILE*);
+
+extern int save;
+
+
+km_float** cu_kmeans(km_float**, km_float, int*, int*,  int, long, int, FILE*, int);
 
 #endif

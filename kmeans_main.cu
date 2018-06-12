@@ -13,19 +13,13 @@
 
 #define MAX_MEAN 1000
 
-int main(int argc, char **argv) {
+int save;
 
-	/*
-	CHECK(cudaDeviceReset());
-	int deviceNum = 0;
-	cudaDeviceProp deviceProp;
-	
-	cudaGetDeviceProperties(&deviceProp, deviceNum);
-	printf("[INFO] Device Number: %d\n", deviceNum);
-	*/
+int main(int argc, char **argv) {
+	save = 0;
 	km_float** data;
 	km_float** centroids;
-	/*
+
 #ifdef LOAD_MNIST
 	printf("this shouldn't be printed.\n");
     init_data mnistdata;
@@ -41,13 +35,12 @@ int main(int argc, char **argv) {
     pred_labels = (int *)malloc(n * sizeof(int));
 
 #else
-*/
     printf("Not using any dataset, generating random data specified in parameters!\n");
     // Load Parameters
 	parameters params;
 
 	km_float threshold = params.threshold;
-	int n = params.numSamples;
+	long n = params.numSamples;
 	int k = params.classes;
 	int d = params.dim;
    
@@ -56,6 +49,7 @@ int main(int argc, char **argv) {
 	int* pred_labels;
 	pred_labels = (int *)malloc(n * sizeof(int));
     assert(pred_labels != NULL);
+
 	// Allocate Memory
 	printf("[INFO]: Allocating Memory\n");
 	try {
@@ -69,34 +63,25 @@ int main(int argc, char **argv) {
 	// Generate Random Data of varying mean, with stddev 2.0
 	printf("[INFO]: Generating Random Values\n");
 	std::default_random_engine generator;
-	//km_float *means = new km_float(k);
-    //km_float *means_y = new km_float(k);
+
 	km_float *means;
 	km_float *means_y;
 	means = (km_float*)malloc(sizeof(km_float)*k);
 	means_y = (km_float*)malloc(sizeof(km_float)*k);;
 	int count = 0;
-    /*
-	for (int i = 0; i < k; i++) {
-		means[i] = (km_float)count;
-		count += 5;
-	}
-    */
+
     for(int i = 0; i < k; i++) {
         means[i] = rand() % MAX_MEAN + 1;
         means_y[i] = rand() % MAX_MEAN + 1;
     }
-	int pointsPerLabel = n / k;
-	//km_float mean;
-    //km_float mean_y;
+	long pointsPerLabel = n / k;
+
+
 	for (int i = 0; i < k; i++) {
         // Sample from random distribution for varying X and Y means
-		//mean_x = means[i];
-        //mean_y = means_y[i];
-
 		std::normal_distribution<km_float> distribution_x(means[i], 150.0);
         std::normal_distribution<km_float> distribution_y(means_y[i], 150.0);
-		for (int j = 0; j < pointsPerLabel; j++) {
+		for (long j = 0; j < pointsPerLabel; j++) {
 			for (int z = 0; z < d; z++) {
                 km_float num;
                 if(z == 0) { 
@@ -112,14 +97,17 @@ int main(int argc, char **argv) {
 	if (data == NULL) {
         exit(1);
     }
-//#endif
-	const char* file_name = "kmeans1.bin";
+#endif
+	const char* file_name = "kmeans_80clusters.bin";
 	FILE *f = fopen(file_name, "wb");
 	int saved = log_points(data, f, 1, k, n, d);
-	//int saved = save_points(data, file_name, 1, k, n, d);
+
 	if (saved == 0) {
 		printf("[FILE] %d data points saved\n\n", n);
 	}
+
+	clock_t start;
+	start - clock();
 
 	centroids = cu_kmeans(data,
 		threshold,
@@ -128,7 +116,11 @@ int main(int argc, char **argv) {
 		d,
 		n,
 		k,
-		f);
+		f,
+		save);
+
+	float total_time = (float)(clock() - start) / CLOCKS_PER_SEC;
+	printf("\[TIME]: Script total time: %f\n\n", total_time);
 	/*
 	for (int a = 0; a < k; a++) {
 		printf("centroids %d: ", a);
@@ -138,6 +130,7 @@ int main(int argc, char **argv) {
 		printf("\n\n");
 	}
 	*/
+	
 	fclose(f);
     free(data[0]);
     free(data);

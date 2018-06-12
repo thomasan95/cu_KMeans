@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "kmeans.h"
 #include "../common/common.h"
 #include "file_utils.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define THREADS_PER_BLOCK 128
 
@@ -36,7 +39,7 @@ static inline int nextPowerOfTwo(int n) {
 *		km_float val: euclidean distance (L2 norm)
 */
 __host__ __device__ inline static km_float get_norm(int    d,
-												int    n,
+												long    n,
 												int    k,
 												km_float *d_data,     
 												km_float *centroids, 
@@ -65,7 +68,7 @@ __host__ __device__ inline static km_float get_norm(int    d,
 *		int *d_deltas: keep track of amount of changes
 */
 __global__ static void find_nearest_centroid(int d,
-											  int n,
+											  long n,
 											  int k,
 											  km_float *d_data,          
 											  km_float *d_centroids,  
@@ -175,18 +178,19 @@ km_float** cu_kmeans(km_float **data,
 					int    *currCluster,
 					int    *loop_iterations,
 					int     d,    
-					int     n,      
+					long     n,      
 					int     k,
-					FILE* file_name)
+					FILE* file_name,
+					int save)
 {
-    int      i, j, index, loop=0;
-    int     *counts; 
+    long i, j, index, loop=0;
+    int *counts; 
                               
-	km_float    delta = 0.0;;
+	km_float delta = 0.0;;
 
-    km_float  **centroids;     
-    km_float  **h_centroids;
-    km_float  **newClusters;  
+    km_float **centroids;     
+    km_float **h_centroids;
+    km_float **newClusters;  
 
     km_float *d_data;
     km_float *d_centroids;
@@ -204,7 +208,6 @@ km_float** cu_kmeans(km_float **data,
 	int minIdx = 0;
 	int maxIdx = n;
 	
-	//int *randValues = new int(k);
 	int* randValues;
 	randValues = (int*)malloc(sizeof(int)*k);
 	for (i = 0; i < k; i++) {
@@ -218,10 +221,13 @@ km_float** cu_kmeans(km_float **data,
 			h_centroids[i][j] = h_data[i][index];
 		}
 	}
-	log_centroids(h_centroids, file_name, 1, k, d);
-	printf("[FILE] Initial centroids points saved\n\n", n);
 
-    /* initialize currCluster[] */
+	if (save) {
+		log_centroids(h_centroids, file_name, 1, k, d);
+		printf("[FILE] Initial centroids points saved\n\n", n);
+	}
+
+    // initialize currCluster[]
 	for (i = 0; i < n; i++) {
 		currCluster[i] = -1;
 	}
@@ -229,15 +235,15 @@ km_float** cu_kmeans(km_float **data,
 	// Initialize all initial counts to 0
 	counts = (int*) calloc(k, sizeof(int));
     assert(counts != NULL);
-    malloc2D(newClusters, d, k, km_float);
-	//memset(newClusters[i], 0, d * k*sizeof(km_float));
-	for (int i = 0; i < k; i++) {
-		for (int j = 0; j < d; j++) {
-			//newClusters[i][j] = 0;
-			newClusters[j][i] = 0;
-		}
+
+	newClusters = (km_float**)malloc(d * sizeof(km_float *));
+	assert(newClusters != NULL);
+	newClusters[0] = (km_float *)calloc(d * k, sizeof(km_float));
+	assert(newClusters[0] != NULL);
+	for (i = 1; i < d; i++) {
+		newClusters[i] = newClusters[i - 1] + k;
 	}
-    //const unsigned int THREADS_PER_BLOCK = 128;
+
     const unsigned int numBlocks = (n + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
 #if USE_SHARED_MEM
     const unsigned int clusterBlockSharedDataSize = THREADS_PER_BLOCK * sizeof(unsigned char) + k * d * sizeof(km_float);
@@ -263,9 +269,12 @@ km_float** cu_kmeans(km_float **data,
 	CHECK(cudaMemcpy(d_currCluster, currCluster,
               n*sizeof(int), cudaMemcpyHostToDevice));
 
+	clock_t start;
+	start = clock();
+
     do {
 		//printf("\n========== ITERATION %d ==========\n", loop+1);
-		printf("[ITER: %d]: CALLING KERNEL\n", loop + 1);
+		printf("[ITER: %d]: CALLING KERNEL\r", loop + 1);
 		CHECK(cudaMemcpy(d_centroids, h_centroids[0], k*d*sizeof(km_float), cudaMemcpyHostToDevice));
 		find_nearest_centroid<<< numBlocks, THREADS_PER_BLOCK, clusterBlockSharedDataSize >>> (d,
 																								n,
@@ -309,14 +318,20 @@ km_float** cu_kmeans(km_float **data,
             counts[i] = 0;  
         }
         delta /= n;
-		log_centroids(h_centroids, file_name, 1, k, d);
-		//save_centroids(h_centroids, "deleteme_centroids.bin", 1, k, d);
-		printf("[FILE] Centroids points saved\n", n);
-		log_labels(currCluster, file_name, 1, n);
-		//save_labels(currCluster, "deleteme_labels.bin", 1, n);
-		printf("[FILE] Labels saved\n\n", n);
+		
+		//Comment out logging for benchmarking
+		if (save) {
+			log_centroids(h_centroids, file_name, 1, k, d);
+			printf("[FILE] Centroids points saved\n", n);
+			log_labels(currCluster, file_name, 1, n);
+			printf("[FILE] Labels saved\n\n", n);
+		}
 	} while (delta > threshold && loop++ < 500);
 
+	float total_time = (float)(clock() - start)/CLOCKS_PER_SEC;
+	printf("\n[TIME]: Kernel Total time: %f\n", total_time);
+
+	fwrite(&total_time, sizeof(float), 1, file_name);
 
     *loop_iterations = loop + 1;
 
@@ -332,7 +347,7 @@ km_float** cu_kmeans(km_float **data,
 	CHECK(cudaFree(d_centroids));
 	CHECK(cudaFree(d_currCluster));
 	CHECK(cudaFree(d_deltas));
-
+	free(randValues);
     free(h_data[0]);
     free(h_data);
     free(h_centroids[0]);
