@@ -25,12 +25,11 @@ inline void CHECK(cudaError_t e) {
 
 struct parameters
 {
-	const int numSamples = 10000;
-	const int dim = 784;
-	const int classes = 10;
-	const int iterations = 500;
-	const km_float threshold = 0.0001;
-    const int step = 5;
+	int numSamples = 1000;
+	int dim = 2;
+	int classes = 10;
+	int iterations = 500;
+	km_float threshold = 0.0001;
 };
 
 struct init_data
@@ -45,6 +44,7 @@ struct init_data
 
 };
 
-km_float** cu_kmeans(km_float, int*, int*, km_float**, int, int, int);
+km_float** cu_kmeans(km_float**, km_float, 
+					int*, int*,  int, int, int, FILE*);
 
 #endif
