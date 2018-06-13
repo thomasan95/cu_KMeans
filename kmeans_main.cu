@@ -38,7 +38,6 @@ int main(int argc, char **argv) {
     printf("Not using any dataset, generating random data specified in parameters!\n");
     // Load Parameters
 	parameters params;
-
 	km_float threshold = params.threshold;
 	long n = params.numSamples;
 	int k = params.classes;
@@ -65,17 +64,13 @@ int main(int argc, char **argv) {
 	std::default_random_engine generator;
 
 	km_float *means;
-	km_float *means_y;
-	means = (km_float*)malloc(sizeof(km_float)*k);
-	means_y = (km_float*)malloc(sizeof(km_float)*k);;
-	int count = 0;
+	means = (km_float*)malloc(sizeof(km_float) * k * d)
 
-    for(int i = 0; i < k; i++) {
+	for(int i = 0; i < k; i++) {
         means[i] = rand() % MAX_MEAN + 1;
         means_y[i] = rand() % MAX_MEAN + 1;
     }
 	long pointsPerLabel = n / k;
-
 
 	for (int i = 0; i < k; i++) {
         // Sample from random distribution for varying X and Y means
@@ -91,7 +86,6 @@ int main(int argc, char **argv) {
                 }
 				data[i * pointsPerLabel + j][z] = num;
 			}
-
 		}
 	}
 	if (data == NULL) {
@@ -121,7 +115,7 @@ int main(int argc, char **argv) {
 
 	float total_time = (float)(clock() - start) / CLOCKS_PER_SEC;
 	printf("\[TIME]: Script total time: %f\n\n", total_time);
-	/*
+	
 	for (int a = 0; a < k; a++) {
 		printf("centroids %d: ", a);
 		for (int b = 0; b < d; b++) {
@@ -129,7 +123,6 @@ int main(int argc, char **argv) {
 		}
 		printf("\n\n");
 	}
-	*/
 	
 	fclose(f);
     free(data[0]);
